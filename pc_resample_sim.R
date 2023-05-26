@@ -47,11 +47,17 @@ pc_resample_sim <- foreach(ii = 1:nsim, .packages = c("pcalg", "parallel", "doSN
   keep_m <- c() # keep estimated CPDAGs with directed edge i -> j
   
   for (m in 1:M) {
+    # PC algorithm
     pc.est[[m]] <- pc(suffStat, indepTest, alpha, p = p)
     amat[[m]] <- as(pc.est[[m]], "amat")
     
-    # keep CPDAG if it has directed edge i -> j 
-    if (amat[[m]][i,j] == 0 & amat[[m]][j,i] == 1) {
+    # check if we have a valid CPDAG
+    if (isValidGraph(amat[[m]], type = "cpdag")) {
+      valid_m <- c(valid_m, m)
+    }
+    
+    # keep CPDAG if it is valid and has directed edge i -> j 
+    if (amat[[m]][i,j] == 0 & amat[[m]][j,i] == 1 & m %in% valid_m) {
       keep_m <- c(keep_m, m)
     }
   }
@@ -82,6 +88,7 @@ pc_resample_sim <- foreach(ii = 1:nsim, .packages = c("pcalg", "parallel", "doSN
   
   return(list(CI = CI, 
               cover = cover,
+              n_valid_m = length(valid_m),
               n_keep_m = length(keep_m)))
 }
 
