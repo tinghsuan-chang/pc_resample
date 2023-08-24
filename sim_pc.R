@@ -44,7 +44,7 @@ sim_pc <- foreach(ii = 1:nsim, .packages = c("pcalg", "parallel", "doSNOW")) %do
   
   pc.est <- vector("list", M) 
   amat <- vector("list", M) # adjacency matrices
-  keep_m <- c() # keep estimated CPDAGs with directed edge i -> j
+  valid_m <- keep_m <- c() 
   
   for (m in 1:M) {
     # PC algorithm
