@@ -64,7 +64,7 @@ sim_pc <- foreach(ii = 1:nsim, .packages = c("pcalg", "parallel", "doSNOW")) %do
   
   # go to next iteration if keep_m is empty
   if (is.null(keep_m)) {
-    next
+    return(NA)
   }
   
   res <- NULL
