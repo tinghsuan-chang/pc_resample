@@ -2,29 +2,34 @@
 library(foreach)
 library(doParallel)
 library(tpc)
+library(tidyverse)
 source("for-ting-hsuan.R")
 source("fxn.R")
 
 # true DAG ---------------------------------------------------------------------------
 set.seed(123)
-trueDAG <- randDAG(10, 7, "er", wFUN = list(wFUN, 0.5, 1.0))
+d <- 10 # number of nodes
+trueDAG <- randDAG(d, 7, "er", wFUN = list(wFUN, 0.5, 1.0))
 trueDAG <- topsort(trueDAG)
-# we are interested in 9 -> 10
+# we are interested in i -> j
 i <- 9; j <- 10 
 # estimated effect using true DAG
-trueBeta <- causalEffect_modified(trueDAG, y = j, x = i) # -0.322
+trueBeta <- causalEffect_modified(trueDAG, y = j, x = i) 
 
 # simulation -------------------------------------------------------------------------
-registerDoParallel(detectCores()) 
+order <- "complete" # "complete" or "partial" order info 
 nsim <- 500
+nb_max <- 7 # maximum number of neighbors per node 
+nu <- 0.025
 n <- 500 # sample size
-M <- 100 # number of estimated graphs
-# specify threshold to compare with z(pcorr) for the new independence test
-# NOTE: should be a negative number, retain null (remove edge) if -|z(pcorr)| > threshold
-thres <- -1.96
-z <- -thres
+M <- 50 # number of resamples
+c = 2 # c star in the threshold adjustment factor tau 
+L = (nb_max+1) * d*(d-1)/2 # maximum number of independencies to be evaluated
+tau = c*(log(n)/M)^(1/L) # threshold adjustment factor
+thres = tau * qnorm(nu/L) # threshold to compare with z(pcorr) for the new independence test (negative number, retain null (remove edge) if -|z(pcorr)| > threshold)
+z = -qnorm((0.05-nu)/2) # z score for constructing CI
 
-# NOTE: for now tPC tiers = 1:10; need to modify code a bit for weakened order info
+registerDoParallel(detectCores()) 
 system.time({
   sim <- foreach(ii = 1:nsim) %dopar% {
     set.seed(ii)
@@ -32,8 +37,25 @@ system.time({
     data <- rmvDAG_modified(n, trueDAG, errDist = 'normal')
     suffStat <- list(C = cor(data), n = n)
     
+    # SUPPOSE TURE DAG IS KNOWN
+    pa_x <- which(as(trueDAG, "matrix")[,i] != 0) 
+    dat <- as.data.frame(data[, c(j, i, pa_x)]) 
+    colnames(dat)[1:2] <- c("y", "x")
+    beta <- coef(lm(y ~., data = dat))["x"] 
+    var <- diag(vcov(lm(y ~., data = dat)))["x"]
+    tru.CI <- beta + c(-1, 1)* 1.96 * sqrt(var)
+    tru.CI_len <- tru.CI[2] - tru.CI[1] # CI length
+    if (trueBeta > tru.CI[1] & trueBeta < tru.CI[2]) {
+      tru.cover <- 1
+    } else
+      tru.cover <- 0
+    
     # NAIVE APPROACH 
-    naive.est <- tpc(suffStat, indepTest = gaussCItest, alpha = 0.05, p = 10, tiers = c(1:10)) 
+    if (order == "complete") {
+      naive.est <- tpc(suffStat, indepTest = gaussCItest, alpha = 0.05, p = 10, tiers = c(1:10))
+    } else if (order == "partial") {
+      naive.est <- tpc(suffStat, indepTest = gaussCItest, alpha = 0.05, p = 10, tiers = c(rep(1,3), rep(2,3), rep(3,4)))
+    }
     naive.amat <- as(naive.est, "amat")
     
     # check if we have a valid graph
@@ -42,7 +64,9 @@ system.time({
     # construct CI if graph is valid  
     if (naive.valid == TRUE) {
       naive.res <- simple_ida(data, naive.amat, x = i, y = j)$res
-      naive.CI <- naive.res[,"beta"] + c(-1, 1)* z * sqrt(naive.res[,"var"])
+      naive.CI_l <- naive.res[,"beta"] - 1.96 * sqrt(naive.res[,"var"])
+      naive.CI_u <- naive.res[,"beta"] + 1.96 * sqrt(naive.res[,"var"])
+      naive.CI <- c(min(naive.CI_l), max(naive.CI_u ))
       naive.CI_len <- naive.CI[2] - naive.CI[1] # CI length
       if (trueBeta > naive.CI[1] & trueBeta < naive.CI[2]) {
         naive.cover <- 1
@@ -57,10 +81,15 @@ system.time({
     # RESAMPLING APPROACH
     tpc.est <- vector("list", M) 
     amat <- vector("list", M) 
-    valid_m <- keep_m <- c() 
+    valid_m <- keep_m <- c()
+    pa <- c()
     for (m in 1:M) {
       # tPC algorithm with the new independence test
-      tpc.est[[m]] <- tpc(suffStat, indepTest = resamplingTestGauss, alpha = thres, p = 10, tiers = c(1:10)) 
+      if (order == "complete") {
+        tpc.est[[m]] <- tpc(suffStat, indepTest = resamplingTestGauss, alpha = thres, p = 10, tiers = c(1:10)) 
+      } else if (order == "partial") {
+        tpc.est[[m]] <- tpc(suffStat, indepTest = resamplingTestGauss, alpha = thres, p = 10, tiers = c(rep(1,3), rep(2,3), rep(3,4))) 
+      }
       amat[[m]] <- as(tpc.est[[m]], "amat")
       
       # check if we have a valid graph
@@ -68,10 +97,13 @@ system.time({
         valid_m <- c(valid_m, m)
       }
       
-      # keep graph if it is valid and has directed edge i -> j 
-      if (amat[[m]][i,j] == 0 & amat[[m]][j,i] == 1 & m %in% valid_m) {
+      # keep graph if it is valid and i is a possible ancestor of j 
+      if (i %in% possAn(m = amat[[m]], x = j, ds = FALSE, type = "pdag") & m %in% valid_m) {
         keep_m <- c(keep_m, m)
       }
+      
+      # record parents of i
+      pa <- c(pa, which(amat[[m]][i,] == 1))
     }
     
     # construct CI if keep_m is not empty 
@@ -97,8 +129,11 @@ system.time({
       CI_len <- NA
       cover <- NA
     }
-    
-    return(list(naive.CI = naive.CI,
+
+    return(list(tru.CI = tru.CI,
+                tru.CI_len = tru.CI_len,
+                tru.cover = tru.cover,
+                naive.CI = naive.CI,
                 naive.CI_len = naive.CI_len,
                 naive.cover = naive.cover,
                 naive.valid = naive.valid,
@@ -106,27 +141,22 @@ system.time({
                 CI_len = CI_len,
                 cover = cover,
                 n_valid_m = length(valid_m),
-                n_keep_m = length(keep_m)))
+                n_keep_m = length(keep_m),
+                pa = unique(pa)))
   }
 })
 
 
-#########################
-
-#load(file = "sim_tpc.RData")
-
-# number of valid/kept graphs
-library(tidyverse)
-library(reshape2)
-library(ggplot2)
-valid <- sapply(sim[1:500], f <- function(l) {getElement(l, "n_valid_m")})
-keep <- sapply(sim[1:500], f <- function(l) {getElement(l, "n_keep_m")})
-df <- tibble(ii = 1:length(valid), valid = valid, keep = keep)
-ggplot(melt(df, id = "ii"), aes(x = ii, y = value, fill = variable)) + 
-  geom_bar(stat = "identity", position = "identity") 
+## RESULTS ##
 
 # coverage
-naive.cover <- cover <- c()
+tru.cover <- naive.cover <- cover <- c()
+for (i in 1:nsim) {
+  if (is.na(sim[[i]]$tru.cover))
+    tru.cover <- c(tru.cover, NA)
+  else
+    tru.cover <- c(tru.cover, getElement(sim[[i]], "tru.cover"))
+}
 for (i in 1:nsim) {
   if (is.na(sim[[i]]$naive.cover))
     naive.cover <- c(naive.cover, NA)
@@ -139,28 +169,26 @@ for (i in 1:nsim) {
   else
     cover <- c(cover,  getElement(sim[[i]], "cover"))
 }
-mean(naive.cover, na.rm = TRUE)
+mean(tru.cover, na.rm = TRUE)  
+mean(naive.cover, na.rm = TRUE) 
 mean(cover, na.rm = TRUE) 
-sum(!is.na(naive.cover))
-sum(!is.na(cover)) 
-which(is.na(cover))
-# naive: 65.4% (500)
-# resampling: 83.6% (500)
 
-# CI length
+# CI width
+tru.CI_len <- sapply(sim, f <- function(l) {getElement(l, "tru.CI_len")})
 naive.CI_len <- sapply(sim, f <- function(l) {getElement(l, "naive.CI_len")})
 CI_len <- sapply(sim, f <- function(l) {getElement(l, "CI_len")})
-mean(naive.CI_len, na.rm = TRUE) #naive: 0.188
-mean(CI_len, na.rm = TRUE) #resampling: 0.265
+mean(tru.CI_len, na.rm = TRUE)
+mean(naive.CI_len, na.rm = TRUE)  
+mean(CI_len, na.rm = TRUE) 
 
-# plot CI
-CI_l <- sapply(sim[1:250], f <- function(l) {getElement(l, "CI")[1]})
-CI_u <- sapply(sim[1:250], f <- function(l) {getElement(l, "CI")[2]})
-naive.CI_l <- sapply(sim[1:250], f <- function(l) {getElement(l, "naive.CI")[1]})
-naive.CI_u <- sapply(sim[1:250], f <- function(l) {getElement(l, "naive.CI")[2]})
-df <- tibble(ii = 1:length(CI_l), CI_l = CI_l, CI_u = CI_u, naive.CI_l = naive.CI_l, naive.CI_u = naive.CI_u)
-df %>%
-  ggplot() +
-  geom_errorbar(aes(x = ii, ymin = CI_l, ymax = CI_u), colour = "orange") +
-  geom_errorbar(aes(x = ii, ymin = naive.CI_l, ymax = naive.CI_u), colour = "blue", alpha = 0.4) +
-  geom_hline(yintercept = trueBeta, linetype = "dashed", color = "red")
+# number of valid/kept graphs
+naive.valid <- sapply(sim[1:500], f <- function(l) {getElement(l, "naive.valid")})
+mean(naive.valid)
+valid <- sapply(sim[1:500], f <- function(l) {getElement(l, "n_valid_m")})
+keep <- sapply(sim[1:500], f <- function(l) {getElement(l, "n_keep_m")})
+df <- tibble(ii = 1:length(valid), valid = valid, keep = keep)
+df <- df %>%
+  mutate(pct = keep/valid)
+mean(df$valid/M, na.rm = TRUE)
+mean(df$pct, na.rm = TRUE)
+length(which(df$keep == 0))
