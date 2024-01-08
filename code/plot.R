@@ -187,9 +187,9 @@ p14 <- part %>%
   scale_color_manual("", labels = c("kept", "valid"), values = c("darkred", "steelblue")) +
   theme_bw() 
 
-# other plots ------------------------------------------------------
+# additional plots ------------------------------------------------------
 
-# set.seed(123123) --> complete order, coverage vs c*
+# set.seed(123123) - complete order, coverage vs c*
 comp2 <- readRDS(file = "df/comp2.RDS")
 p15 <- comp2 %>%
   filter(n == 500, M == 50, c %in% c((1:20)/10)) %>%
@@ -202,7 +202,7 @@ p15 <- comp2 %>%
   xlab("c*") +
   theme_bw()
 
-# set.seed(123123) --> complete order, CI length vs c*
+# set.seed(123123) - complete order, CI length vs c*
 p16 <- comp2 %>%
   filter(n == 500, M == 50, c %in% c((1:20)/10)) %>%
   gather(method, CI_width, c(width, tru.width, naive.width), factor_key = TRUE) %>%
@@ -215,7 +215,7 @@ p16 <- comp2 %>%
   xlab(expression(c['*'])) +
   theme_bw() 
 
-# set.seed(123123) --> complete order, pct kept graphs vs c*
+# set.seed(123123) - complete order, pct kept graphs vs c*
 p17 <- comp2 %>%
   filter(n == 500, M == 50, c %in% c((1:20)/10)) %>%
   ggplot(aes(x = c, y = kept*100)) +
@@ -285,3 +285,102 @@ p21 <- ggplot(melt(df, id = "ii"), aes(x = ii, y = value, fill = variable)) +
   labs(title = "c* = 1/5", x = "Iteration", y = "Number of graphs") +
   theme_bw()
 
+# complete order, nb_max = 3, coverage vs M
+p22 <- comp %>%
+  filter(nb_max == 3, nu == 0.025, n == 500, c == 0.2) %>%
+  gather(method, coverage, c(cover, tru.cover, naive.cover), factor_key = TRUE) %>%
+  ggplot(aes(x = M, y = coverage, color = method)) +
+  geom_line() +
+  geom_point() +
+  scale_x_continuous(breaks = c(25, 50, 100)) +
+  scale_color_manual(labels = c("resample", "true", "naive"), values = c("red", "gray", "blue")) +
+  ylim(c(0.55, 1)) +
+  theme_bw()
+
+# complete order, nb_max = 3, coverage vs n
+p23 <- comp %>%
+  filter(nb_max == 3, nu == 0.025, M == 50, c == 0.2) %>%
+  gather(method, coverage, c(cover, tru.cover, naive.cover), factor_key = TRUE) %>%
+  ggplot(aes(x = n, y = coverage, color = method)) +
+  geom_line() +
+  geom_point() +
+  scale_x_continuous(breaks = c(250, 500, 1000)) +
+  scale_color_manual(labels = c("resample", "true", "naive"), values = c("red", "gray", "blue")) +
+  ylim(c(0.55, 1)) +
+  theme_bw()
+
+# complete order, nb_max = 3, CI length vs M
+p24 <- comp %>%
+  filter(nb_max == 3, nu == 0.025, n == 500, c == 0.2) %>%
+  gather(method, CI_width, c(width, tru.width, naive.width), factor_key = TRUE) %>%
+  ggplot(aes(x = M, y = CI_width, color = method)) +
+  geom_line() +
+  geom_point() +
+  scale_x_continuous(breaks = c(25, 50, 100)) +
+  scale_color_manual(labels = c("resample", "true", "naive"), values = c("red", "gray", "blue")) +
+  ylim(c(0.1, 0.45)) +
+  ylab("CI length") +
+  theme_bw()
+
+# complete order, nb_max = 3, CI length vs n
+p25 <- comp %>%
+  filter(nb_max == 3, nu == 0.025, M == 50, c == 0.2) %>%
+  gather(method, CI_width, c(width, tru.width, naive.width), factor_key = TRUE) %>%
+  ggplot(aes(x = n, y = CI_width, color = method)) +
+  geom_line() +
+  geom_point() +
+  scale_x_continuous(breaks = c(250, 500, 1000)) +
+  scale_color_manual(labels = c("resample", "true", "naive"), values = c("red", "gray", "blue")) +
+  ylim(c(0.1, 0.45)) +
+  ylab("CI length") +
+  theme_bw()
+
+# partial order, nb_max = 3, coverage vs M 
+p26 <- part %>%
+  filter(nb_max == 3, nu == 0.025, n == 500, c == 0.1) %>%
+  gather(method, coverage, c(cover, tru.cover, naive.cover), factor_key = TRUE) %>%
+  ggplot(aes(x = M, y = coverage, color = method)) +
+  geom_line() +
+  geom_point() +
+  scale_x_continuous(breaks = c(25, 50, 100)) +
+  scale_color_manual(labels = c("resample", "true", "naive"), values = c("red", "gray", "blue")) +
+  ylim(c(0.8, 1)) +
+  theme_bw()
+
+# partial order, nb_max = 3, coverage vs n
+p27 <- part %>%
+  filter(nb_max == 3, nu == 0.025, M == 50, c == 0.1) %>%
+  gather(method, coverage, c(cover, tru.cover, naive.cover), factor_key = TRUE) %>%
+  ggplot(aes(x = n, y = coverage, color = method)) +
+  geom_line() +
+  geom_point() +
+  scale_x_continuous(breaks = c(250, 500, 1000)) +
+  scale_color_manual(labels = c("resample", "true", "naive"), values = c("red", "gray", "blue")) +
+  ylim(c(0.8, 1)) +
+  theme_bw()
+
+# partial order, nb_max = 3, CI length vs M
+p28 <- part %>%
+  filter(nb_max == 3, nu == 0.025, n == 500, c == 0.1) %>%
+  gather(method, CI_width, c(width, tru.width, naive.width), factor_key = TRUE) %>%
+  ggplot(aes(x = M, y = CI_width, color = method)) +
+  geom_line() +
+  geom_point() +
+  scale_x_continuous(breaks = c(25, 50, 100)) +
+  scale_color_manual(labels = c("resample", "true", "naive"), values = c("red", "gray", "blue")) +
+  ylim(c(0.1, 0.4)) +
+  ylab("CI length") +
+  theme_bw()
+
+# partial order, nb_max = 3, CI length vs n
+p29 <- part %>%
+  filter(nb_max == 3, nu == 0.025, M == 50, c == 0.1) %>%
+  gather(method, CI_width, c(width, tru.width, naive.width), factor_key = TRUE) %>%
+  ggplot(aes(x = n, y = CI_width, color = method)) +
+  geom_line() +
+  geom_point() +
+  scale_x_continuous(breaks = c(250, 500, 1000)) +
+  scale_color_manual(labels = c("resample", "true", "naive"), values = c("red", "gray", "blue")) +
+  ylim(c(0.1, 0.4)) +
+  ylab("CI length") +
+  theme_bw()
