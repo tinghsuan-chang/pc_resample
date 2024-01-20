@@ -12,18 +12,18 @@ d <- 10 # number of nodes
 trueDAG <- randDAG(d, 7, "er", wFUN = list(wFUN, 0.5, 1.0))
 trueDAG <- topsort(trueDAG)
 # we are interested in i -> j
-i <- 9; j <- 10 
+i <- 6; j <- 10 
 # estimated effect using true DAG
 trueBeta <- causalEffect_modified(trueDAG, y = j, x = i) 
 
 # simulation -------------------------------------------------------------------------
-order <- "complete" # "complete" or "partial" order info 
+order <- "partial" # "complete" or "partial" order info 
 nsim <- 500
 nb_max <- 7 # maximum number of neighbors per node 
 nu <- 0.025
 n <- 500 # sample size
 M <- 50 # number of resamples
-c = 0.2 # c star in the threshold adjustment factor tau 
+c = 0.1 # c star in the threshold adjustment factor tau 
 L = (nb_max+1) * d*(d-1)/2 # maximum number of independencies to be evaluated
 tau = c*(log(n)/M)^(1/L) # threshold adjustment factor
 thres = tau * qnorm(nu/L) # threshold to compare with z(pcorr) for the new independence test (negative number, retain null (remove edge) if -|z(pcorr)| > threshold)
@@ -97,8 +97,8 @@ system.time({
         valid_m <- c(valid_m, m)
       }
       
-      # keep graph if it is valid and i is a possible ancestor of j 
-      if (i %in% possAn(m = amat[[m]], x = j, ds = FALSE, type = "pdag") & m %in% valid_m) {
+      # keep graph if it is valid  
+      if (m %in% valid_m) {
         keep_m <- c(keep_m, m)
       }
       
