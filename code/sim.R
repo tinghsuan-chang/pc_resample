@@ -28,7 +28,7 @@ tau = c*(log(n)/M)^(1/L) # threshold adjustment factor
 thres = tau * qnorm(nu/L) # threshold to compare with z(pcorr) for the new independence test (negative number, retain null (remove edge) if -|z(pcorr)| > threshold)
 z = -qnorm((0.05-nu)/2) # z score for constructing CI
 
-cl <- makeSOCKcluster(detectCores())
+cl <- makeSOCKcluster(parallelly::availableCores())
 registerDoSNOW(cl) 
 pb <- txtProgressBar(min = 1, max = nsim, style = 3)
 progress <- function(n) setTxtProgressBar(pb, n)
