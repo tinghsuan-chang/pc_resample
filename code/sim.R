@@ -5,18 +5,19 @@ library(tpc)
 library(tidyverse)
 source("fxn.R")
 
-# true DAG ---------------------------------------------------------------------------
-set.seed(345)
-d <- 10 # number of nodes
-trueDAG <- randDAG(d, 2, "er", wFUN = list(wFUN, 0.5, 1.0))
-trueDAG <- topsort(trueDAG)
-# estimand is the causal effect of i on j
-i <- 6; j <- 10 
-# true causal effect
-trueBeta <- causalEffect_modified(trueDAG, y = j, x = i) 
-
 # simulation -------------------------------------------------------------------------
-tier <- c(rep(1,3), rep(2,3), rep(3,4)) 
+d <- 10 # number of nodes
+avg_nb <- 7 # expected number of neighbors per node in true graph
+tier <- c(1,1,1,2,2,2,3,3,3,3) 
+i <- 6; j <- 10 # estimand is the causal effect of i on j
+
+#### DON'T RUN ######################################
+set.seed(123)
+trueDAG <- randDAG(d, avg_nb, "er", wFUN = list(wFUN, 0.5, 1.0))
+trueDAG <- topsort(trueDAG)
+trueBeta <- causalEffect_modified(trueDAG, y = j, x = i) 
+#####################################################
+
 nsim <- 500
 nb_max <- 7 # maximum number of neighbors per node 
 nu <- 0.025
@@ -37,10 +38,10 @@ system.time({
     set.seed(ii)
     
     # generate true DAG
-    #trueDAG <- randDAG(d, 7, "er", wFUN = list(wFUN, 0.5, 1.0))
-    #trueDAG <- topsort(trueDAG)
+    trueDAG <- randDAG(d, avg_nb, "er", wFUN = list(wFUN, 0.5, 1.0))
+    trueDAG <- topsort(trueDAG)
     # true causal effect
-    #trueBeta <- causalEffect_modified(trueDAG, y = j, x = i) 
+    trueBeta <- causalEffect_modified(trueDAG, y = j, x = i) 
     
     # generate data according to true DAG
     data <- rmvDAG_modified(n, trueDAG, errDist = 'normal')
@@ -131,7 +132,8 @@ system.time({
       cover <- NA
     }
     
-    return(list(tru.CI = tru.CI,
+    return(list(trueBeta = trueBeta,
+                tru.CI = tru.CI,
                 tru.CI_len = tru.CI_len,
                 tru.cover = tru.cover,
                 naive.CI = naive.CI,
@@ -150,27 +152,11 @@ system.time({
 
 
 # coverage
-tru.cover <- naive.cover <- cover <- c()
-for (i in 1:nsim) {
-  if (is.na(sim[[i]]$tru.cover))
-    tru.cover <- c(tru.cover, NA)
-  else
-    tru.cover <- c(tru.cover, getElement(sim[[i]], "tru.cover"))
-}
-for (i in 1:nsim) {
-  if (is.na(sim[[i]]$naive.cover))
-    naive.cover <- c(naive.cover, NA)
-  else
-    naive.cover <- c(naive.cover, getElement(sim[[i]], "naive.cover"))
-}
-for (i in 1:nsim) {
-  if (is.na(sim[[i]]$cover))
-    cover <- c(cover,  NA)
-  else
-    cover <- c(cover,  getElement(sim[[i]], "cover"))
-}
-mean(tru.cover, na.rm = TRUE)  
-mean(naive.cover, na.rm = TRUE) 
+tru.cover <- sapply(sim, f <- function(l) {getElement(l, "tru.cover")})
+naive.cover <- sapply(sim, f <- function(l) {getElement(l, "naive.cover")})
+cover <- sapply(sim, f <- function(l) {getElement(l, "cover")})
+mean(tru.cover, na.rm = TRUE)
+mean(naive.cover, na.rm = TRUE)  
 mean(cover, na.rm = TRUE) 
 
 # CI length
@@ -186,11 +172,8 @@ naive.valid <- sapply(sim[1:nsim], f <- function(l) {getElement(l, "naive.valid"
 mean(naive.valid)
 valid <- sapply(sim[1:nsim], f <- function(l) {getElement(l, "n_valid_m")})
 keep <- sapply(sim[1:nsim], f <- function(l) {getElement(l, "n_keep_m")})
-df <- tibble(ii = 1:length(valid), valid = valid, keep = keep)
-df <- df %>%
-  mutate(pct = keep/valid)
-mean(df$valid/M, na.rm = TRUE)
-mean(df$keep/M, na.rm = TRUE)
-mean(df$pct, na.rm = TRUE)
-length(which(df$keep == 0))
+mean(valid/M)
+mean(keep/M)
+
+
 
