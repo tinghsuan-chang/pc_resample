@@ -26,7 +26,7 @@ M <- 50 # number of resamples
 c = 0.02 # c star in the threshold adjustment factor tau 
 L = (nb_max+1) * d*(d-1)/2 # maximum number of independencies to be evaluated
 tau = c*(log(n)/M)^(1/L) # threshold adjustment factor
-thres = tau * qnorm(nu/L) # threshold to compare with z(pcorr) for the new independence test (negative number, retain null (remove edge) if -|z(pcorr)| > threshold)
+thres = tau * qnorm(nu/(2*L)) # threshold to compare with z(pcorr) for the new independence test (negative number, retain null (remove edge) if -|z(pcorr)| > threshold)
 z = -qnorm((0.05-nu)/2) # z score for constructing CI
 
 cl <- makeSOCKcluster(parallelly::availableCores())
@@ -53,7 +53,7 @@ system.time({
     colnames(dat)[1:2] <- c("y", "x")
     beta <- coef(lm(y ~., data = dat))["x"] 
     var <- diag(vcov(lm(y ~., data = dat)))["x"]
-    tru.CI <- beta + c(-1, 1)* 1.96 * sqrt(var)
+    tru.CI <- beta + c(-1, 1)* qnorm(0.975) * sqrt(var)
     tru.CI_len <- tru.CI[2] - tru.CI[1] # CI length
     if (trueBeta > tru.CI[1] & trueBeta < tru.CI[2]) {
       tru.cover <- 1
@@ -70,8 +70,8 @@ system.time({
     # construct CI if graph is valid  
     if (naive.valid == TRUE) {
       naive.res <- simple_ida(data, naive.amat, x = i, y = j)$res
-      naive.CI_l <- naive.res[,"beta"] - 1.96 * sqrt(naive.res[,"var"])
-      naive.CI_u <- naive.res[,"beta"] + 1.96 * sqrt(naive.res[,"var"])
+      naive.CI_l <- naive.res[,"beta"] - qnorm(0.975) * sqrt(naive.res[,"var"])
+      naive.CI_u <- naive.res[,"beta"] + qnorm(0.975) * sqrt(naive.res[,"var"])
       naive.CI <- c(min(naive.CI_l), max(naive.CI_u ))
       naive.CI_len <- naive.CI[2] - naive.CI[1] # CI length
       if (trueBeta > naive.CI[1] & trueBeta < naive.CI[2]) {
