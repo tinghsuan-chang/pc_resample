@@ -4,7 +4,7 @@ library(patchwork)
 library(reshape2)
 library(ggpattern)
 
-df <- readRDS(file = "df/df.RDS")
+df <- readRDS(file = "data/df.RDS")
 
 # Figure 1(a): avg.nb = 7, M = 50, coverage vs c*
 fig_1a <- df %>%
