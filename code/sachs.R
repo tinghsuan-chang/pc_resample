@@ -30,7 +30,7 @@ for (m in 1:M) {
   tpc.est[[m]] <- tpc(suffStat, indepTest = resamplingTestGauss, alpha = thres, labels = lab, tiers = tier) 
   amat_all[[m]] <- as(tpc.est[[m]], "amat")
   amat_t2[[m]] <- amat_all[[m]][tier == 2, tier == 2]
-  # check if graph is valid 
+  # check if entire graph is valid 
   if (isValidGraph(amat_all[[m]], type = "pdag")) {
     valid_all <- c(valid_all, m)
   }
@@ -38,7 +38,7 @@ for (m in 1:M) {
   if (isValidGraph(amat_t2[[m]], type = "pdag")) {
     valid_t2 <- c(valid_t2, m)
   }
-  # keep graph if it's valid among tier 2 nodes and has raf -> mek
+  # keep graph if it's valid among tier 2 nodes and has raf -> mek edge
   if ((amat_t2[[m]]["mek","raf"] == 1) & (m %in% valid_t2)) {
     keep <- c(keep, m)
   }
@@ -50,7 +50,7 @@ for (m in 1:M) {
 # STEP 2: AGGREGATION
 res <- NULL
 for (m in keep) {
-  # tier 1 parent(s) of erk
+  # tier 1 parent(s) of erk 
   pa1 <- labels(which(amat_all[[m]]["erk",] == 1 & tier == 1))
   # all DAGs in the equiv. class represented by amat_t2
   allDags <- pdag2allDags(amat_t2[[m]])
