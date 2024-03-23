@@ -11,17 +11,20 @@ d <- ncol(data) # 11 variables
 n <- nrow(data) # 7466 obs
 suffStat <- list(C = cor(data), n = n)
 
+# forbid akt -> erk 
+forb <- matrix(FALSE, nrow = d, ncol = d)
+rownames(forb) <- colnames(forb) <- lab
+forb["akt", "erk"] <- TRUE
 
 # PARAMETER SETTINGS 
 nb_max <- 7 # maximum number of neighbors per node 
 nu <- 0.025
 M <- 100 # number of resamples
-c = 0.1 # c star in the shrinkage parameter tau 
+c = 0.01 # c star in the shrinkage parameter tau 
 L = (nb_max+1) * d*(d-1)/2 # max number of independencies to be evaluated
 tau = c*(log(n)/M)^(1/L) # shrinkage parameter
 thres = tau * qnorm(nu/(2*L)) # threshold to compare with z(pcorr) for the new independence test (negative number, retain null (remove edge) if -|z(pcorr)| > threshold)
 z = -qnorm((0.05-nu)/2) # z score for constructing CI
-
 
 # STEP 1: PC W/ RESAMPLING & SCREENING 
 tpc.est <- vector("list", M) 
@@ -30,7 +33,7 @@ valid_all <- valid_t2 <- NULL
 keep <- NULL
 set.seed(123)
 for (m in 1:M) {
-  tpc.est[[m]] <- tpc(suffStat, indepTest = resamplingTestGauss, alpha = thres, labels = lab, tiers = tier) 
+  tpc.est[[m]] <- tpc(suffStat, indepTest = resamplingTestGauss, alpha = thres, labels = lab, forbEdges = forb, tiers = tier) 
   amat_all[[m]] <- as(tpc.est[[m]], "amat")
   amat_t2[[m]] <- amat_all[[m]][tier == 2, tier == 2]
   # check if entire graph is valid 
@@ -46,9 +49,10 @@ for (m in 1:M) {
     keep <- c(keep, m)
   }
 }
-# c*=0.01: keep 8/100, valid_all 5/100, valid_t2 8/100
-# c*=0.1: keep 4/100, valid_all 2/100, valid_t2 4/100
-# c*=0.2: keep 7/100, valid_all 4/100, valid_t2 7/100
+# c*=0.008: keep 10/100, valid_all 5/100, valid_t2 10/100
+# c*=0.01: keep 6/100, valid_all 2/100, valid_t2 6/100
+# c*=0.06: keep 9/100, valid_all 4/100, valid_t2 9/100
+# c*=0.1: keep 8/100, valid_all 5/100, valid_t2 8/100
 
 # STEP 2: AGGREGATION
 res <- NULL
@@ -66,8 +70,6 @@ for (m in keep) {
     rownames(mat) <- c("raf", "mek", "erk", "akt", "p38", "jnk")
     # find tier 2 parent(s) of erk
     pa2 <- which(mat["erk",] == 1) 
-    # skip if akt is a parent of erk 
-    if (4 %in% pa2) next
     # do lm(akt ~ erk + pa1 + pa2)
     dat <- as.data.frame(data[, c("akt", "erk", pa1, rownames(mat)[pa2])]) 
     beta[k] <- coef(lm(akt ~., data = dat))["erk"] 
@@ -82,13 +84,14 @@ res <- cbind(res, lwr, upr)
 res[,"lwr"] <- res[,"beta"] - z*sqrt(res[,"var"])
 res[,"upr"] <- res[,"beta"] + z*sqrt(res[,"var"])
 CI <- c(min(res[,"lwr"], na.rm = T), max(res[,"upr"], na.rm = T)) # take the union of the CIs
-# c*=0.01: (0.83, 0.96)
-# c*=0.1: (0.79, 0.93)
-# c*=0.2: (0.79, 0.86)
+# c*=0.008: (0.83, 0.95)
+# c*=0.01: (0.84, 0.94)
+# c*=0.06: (0.78, 0.91)
+# c*=0.1: (0.79, 0.96)
 
 
 # ----------------------------------------
-# STEP 2: AGGREGATION (adjust all t1 vars)
+# STEP 2: AGGREGATION (ADJUST ALL T1 VARS)
 res <- NULL
 for (m in keep) {
   # all DAGs in the equiv. class represented by amat_t2
@@ -102,8 +105,6 @@ for (m in keep) {
     rownames(mat) <- c("raf", "mek", "erk", "akt", "p38", "jnk")
     # find tier 2 parent(s) of erk
     pa2 <- which(mat["erk",] == 1)
-    # skip if akt is a parent of erk 
-    if (4 %in% pa2) next
     # do lm(ark ~ erk + all t1 vars + pa2)
     dat <- as.data.frame(data[, c("akt", "erk", lab[tier == 1], rownames(mat)[pa2])]) 
     beta[k] <- coef(lm(akt ~., data = dat))["erk"] 
@@ -118,6 +119,7 @@ res <- cbind(res, lwr, upr)
 res[,"lwr"] <- res[,"beta"] - z*sqrt(res[,"var"])
 res[,"upr"] <- res[,"beta"] + z*sqrt(res[,"var"])
 CI <- c(min(res[,"lwr"], na.rm = T), max(res[,"upr"], na.rm = T)) # take the union of the CIs
+# c*=0.008: (0.83, 0.93)
 # c*=0.01: (0.83, 0.93)
-# c*=0.1: (0.84, 0.93)
-# c*=0.2: (0.84, 0.88)
+# c*=0.06: (0.83, 0.88)
+# c*=0.1: (0.84, 0.88)
