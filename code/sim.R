@@ -8,7 +8,7 @@ source("fxn.R")
 # simulation -------------------------------------------------------------------------
 d <- 10 # number of nodes
 avg_nb <- 7 # expected number of neighbors per node in true graph
-tier <- c(1,1,1,2,2,2,3,3,3,3) 
+tier <- c(1,1,1,2,2,2,2,2,3,3) 
 i <- 6; j <- 10 # estimand is the causal effect of i on j
 
 #### DON'T RUN ######################################
@@ -23,7 +23,7 @@ nb_max <- 7 # maximum number of neighbors per node
 nu <- 0.025
 n <- 500 # sample size
 M <- 50 # number of resamples
-c = 0.02 # c star in the threshold adjustment factor tau 
+c = 0.01 # c star in the threshold adjustment factor tau 
 L = (nb_max+1) * d*(d-1)/2 # maximum number of independencies to be evaluated
 tau = c*(log(n)/M)^(1/L) # threshold adjustment factor
 thres = tau * qnorm(nu/(2*L)) # threshold to compare with z(pcorr) for the new independence test (negative number, retain null (remove edge) if -|z(pcorr)| > threshold)
