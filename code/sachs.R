@@ -123,3 +123,10 @@ CI <- c(min(res[,"lwr"], na.rm = T), max(res[,"upr"], na.rm = T)) # take the uni
 # c*=0.01: (0.83, 0.93)
 # c*=0.06: (0.83, 0.88)
 # c*=0.1: (0.84, 0.88)
+
+
+# ----------------------------------------------------------------------
+# ASSUME KNOWLEDGE OF SUPPLEMENTAL GROUND TRUTH (RAMSEY & ANDREWS FIG 4)
+fit <-  lm(akt ~ erk + pka + mek, data = data) # pka and mek are parents of erk
+confint(fit)[2,] # CI = (0.958, 0.985)
+summary(fit)
