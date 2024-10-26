@@ -1,6 +1,6 @@
 library(pcalg)
 library(tpc)
-source("fxn.R")
+source("code/fxn.R")
 
 data <- read.delim("data/data.txt", header = TRUE, sep = ",")
 data <- data[,1:11] # exclude intervention variables
