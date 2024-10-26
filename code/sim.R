@@ -3,7 +3,7 @@ library(foreach)
 library(doSNOW)
 library(tpc)
 library(tidyverse)
-source("fxn.R")
+source("code/fxn.R")
 
 # simulation -------------------------------------------------------------------------
 d <- 10 # number of nodes
