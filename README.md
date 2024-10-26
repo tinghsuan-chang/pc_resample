@@ -11,5 +11,5 @@ Simulation results from different scenarios (varying the values of `n`, `M` and 
 ## Data example
 `code/sachs.R`: code for replicating results in the single-cell protein network data example   
 
-Data in `data/data.txt` is a clean version of the Sachs et al. (2005) data provided by Ramsey & Andrews (2018).  
+The code uses the file `data/data.txt`, which is a clean version of the Sachs et al. (2005) data provided by Ramsey & Andrews (2018).  
 
