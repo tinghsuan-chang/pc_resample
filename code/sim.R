@@ -1,9 +1,8 @@
 # load packages and functions --------------------------------------------------------
-library(foreach)
-library(doSNOW)
+library(doParallel)
 library(tpc)
 library(tidyverse)
-source("code/fxn.R")
+source("fxn.R")
 
 # simulation -------------------------------------------------------------------------
 d <- 10 # number of nodes
@@ -22,19 +21,19 @@ nsim <- 500
 nb_max <- 7 # maximum number of neighbors per node 
 nu <- 0.025
 n <- 500 # sample size
-M <- 50 # number of resamples
+M <- 1000 # number of resamples
 c = 0.01 # c star in the threshold adjustment factor tau 
 L = (nb_max+1) * d*(d-1)/2 # maximum number of independencies to be evaluated
 tau = c*(log(n)/M)^(1/L) # threshold adjustment factor
 thres = tau * qnorm(nu/(2*L)) # threshold to compare with z(pcorr) for the new independence test (negative number, retain null (remove edge) if -|z(pcorr)| > threshold)
 z = -qnorm((0.05-nu)/2) # z score for constructing CI
 
-cl <- makeSOCKcluster(parallelly::availableCores())
-registerDoSNOW(cl) 
+cl <- makeCluster(detectCores() - 1)  
+registerDoParallel(cl)
 pb <- txtProgressBar(min = 1, max = nsim, style = 3)
 progress <- function(n) setTxtProgressBar(pb, n)
 system.time({
-  sim <- foreach(ii = 1:nsim, .options.snow = list(progress = progress), .packages = c("tpc","tidyverse", "igraph", "mvtnorm", "pcalg")) %dopar% {
+  sim <- foreach(ii = 1:nsim, .options.snow = list(progress = progress), .packages = c("tpc", "tidyverse", "igraph", "mvtnorm", "pcalg", "truncnorm")) %dopar% {
     set.seed(ii)
     
     # generate true DAG
@@ -61,7 +60,7 @@ system.time({
       tru.cover <- 0
     
     # NAIVE APPROACH 
-    naive.est <- tpc(suffStat, indepTest = gaussCItest, alpha = 0.05, p = d, tiers = tier)
+    naive.est <- tpc(suffStat, indepTest = gaussCItest, alpha = 0.01, p = d, tiers = tier)
     naive.amat <- as(naive.est, "amat")
     
     # check if we have a valid graph
@@ -155,7 +154,7 @@ system.time({
 tru.cover <- sapply(sim, f <- function(l) {getElement(l, "tru.cover")})
 naive.cover <- sapply(sim, f <- function(l) {getElement(l, "naive.cover")})
 cover <- sapply(sim, f <- function(l) {getElement(l, "cover")})
-mean(tru.cover, na.rm = TRUE)
+mean(tru.cover, na.rm = TRUE) 
 mean(naive.cover, na.rm = TRUE)  
 mean(cover, na.rm = TRUE) 
 
