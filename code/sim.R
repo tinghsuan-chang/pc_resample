@@ -21,14 +21,14 @@ nsim <- 500
 nb_max <- 7 # maximum number of neighbors per node 
 nu <- 0.025
 n <- 500 # sample size
-M <- 50 # number of resamples
+M <- 1000 # number of resamples
 c = 0.01 # c star in the threshold adjustment factor tau 
 L = (nb_max+1) * d*(d-1)/2 # maximum number of independencies to be evaluated
 tau = c*(log(n)/M)^(1/L) # threshold adjustment factor
 thres = tau * qnorm(nu/(2*L)) # threshold to compare with z(pcorr) for the new independence test (negative number, retain null (remove edge) if -|z(pcorr)| > threshold)
 z = -qnorm((0.05-nu)/2) # z score for constructing CI
 
-cl <- makeCluster(detectCores() - 1)  
+cl <- makeCluster(parallel::detectCores() - 1)  
 registerDoSNOW(cl)
 
 pb <- txtProgressBar(min = 1, max = nsim, style = 3)
