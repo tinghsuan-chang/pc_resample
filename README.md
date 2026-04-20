@@ -1,5 +1,5 @@
 # Post-selection inference for causal effects after causal discovery
-Chang T-H, Guo Z, Malinsky D (2024). Post-selection inference for causal effects after causal discovery. arXiv:2405.06763  
+Chang T-H, Guo Z, Malinsky D (2025). Post-selection inference for causal effects after causal discovery. *Biometrika*
 
 ## Simulation
 `code/fxn.R`: defines functions called in the simulation and data example code  
